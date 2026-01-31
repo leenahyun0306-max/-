@@ -4,6 +4,7 @@ import TemperatureControl from './TemperatureControl.tsx';
 import { getMindFeedback } from '../services/geminiService.ts';
 import { HistoryItem } from '../types.ts';
 
+// Main participation component for recording mind temperature and receiving AI feedback
 const Participate: React.FC = () => {
   const [temperature, setTemperature] = useState(60);
   const [reason, setReason] = useState('');
@@ -11,6 +12,7 @@ const Participate: React.FC = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
+  // Load history from localStorage on component mount
   useEffect(() => {
     const saved = localStorage.getItem('mindy_history');
     if (saved) {
@@ -30,9 +32,11 @@ const Participate: React.FC = () => {
     setFeedback(null);
 
     try {
+      // Get empathetic feedback from Gemini API
       const result = await getMindFeedback(temperature, reason);
       setFeedback(result);
 
+      // Create and save new history item
       const newItem: HistoryItem = {
         id: Date.now().toString(),
         temperature,
@@ -45,9 +49,19 @@ const Participate: React.FC = () => {
       setHistory(newHistory);
       localStorage.setItem('mindy_history', JSON.stringify(newHistory));
       setReason('');
-    } catch (err) {
+    } catch (err: any) {
       console.error("Submission failed", err);
-      setFeedback("죄송해요, 지금은 이야기를 듣는 중에 오류가 생겼어요. 다시 시도해 주실래요?");
+      
+      // Handle specific billing/project errors by prompting for a fresh key selection
+      if (err?.message?.includes("Requested entity was not found")) {
+        setFeedback("죄송해요, 서비스 연결(API 키)에 문제가 생겼어요. 결제가 활성화된 프로젝트의 API 키를 다시 선택해 주세요.");
+        const aistudio = (window as any).aistudio;
+        if (aistudio && typeof aistudio.openSelectKey === 'function') {
+          aistudio.openSelectKey();
+        }
+      } else {
+        setFeedback("죄송해요, 지금은 이야기를 듣는 중에 오류가 생겼어요. 잠시 후에 다시 시도해 주실래요? 💙");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -93,52 +107,36 @@ const Participate: React.FC = () => {
 
       {feedback && (
         <div className="glass-card p-8 rounded-3xl shadow-xl border-2 border-rose-200 bg-white animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-rose-500 flex items-center justify-center text-white shrink-0 shadow-md">
-              <i className="fa-solid fa-heart text-lg"></i>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-rose-50 rounded-full flex items-center justify-center text-rose-500">
+              <i className="fa-solid fa-comment-dots"></i>
             </div>
-            <div className="flex-1 space-y-4">
-              <div className="flex justify-between items-center">
-                <h4 className="font-bold text-xl text-gray-800">AI 마음 가이드의 위로</h4>
-                <span className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-xs font-bold">Today's Advice</span>
-              </div>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-lg font-medium">
-                {feedback}
-              </p>
-              <div className="pt-4 border-t border-gray-50 flex justify-end">
-                <button 
-                  onClick={() => setFeedback(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold transition-colors"
-                >
-                  확인했어요
-                </button>
-              </div>
-            </div>
+            <h3 className="font-bold text-gray-800">마음 전달자</h3>
           </div>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{feedback}</p>
         </div>
       )}
 
       {history.length > 0 && (
-        <div className="space-y-4 pt-8">
-          <h3 className="font-bold text-gray-800 flex items-center gap-2">
-            <i className="fa-solid fa-clock-rotate-left text-rose-400"></i>
-            나의 지난 기록들
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2 mt-12">
+            <i className="fa-solid fa-clock-rotate-left text-gray-400"></i>
+            최근 나의 마음 기록
           </h3>
           <div className="space-y-4">
             {history.map((item) => (
-              <div key={item.id} className="glass-card p-6 rounded-2xl border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shrink-0 shadow-sm
-                  ${item.temperature <= 30 ? 'bg-sky-400' : 
-                    item.temperature <= 60 ? 'bg-emerald-400' : 
-                    item.temperature <= 85 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                >
+              <div key={item.id} className="glass-card p-6 rounded-2xl border border-gray-100 flex gap-4 items-start hover:bg-gray-50 transition-colors">
+                <div className={`w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-sm ${
+                  item.temperature <= 30 ? 'bg-sky-400' : 
+                  item.temperature <= 60 ? 'bg-emerald-400' : 
+                  item.temperature <= 85 ? 'bg-amber-400' : 'bg-rose-500'
+                }`}>
                   {item.temperature}°
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-xs text-gray-400">{new Date(item.timestamp).toLocaleString()}</p>
-                  </div>
-                  <p className="text-sm text-gray-700 font-medium line-clamp-1">{item.reason}</p>
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs text-gray-400">{new Date(item.timestamp).toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">{item.reason}</p>
+                  <p className="text-xs text-gray-500 line-clamp-2">{item.feedback}</p>
                 </div>
               </div>
             ))}

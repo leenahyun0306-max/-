@@ -22,7 +22,7 @@ Essential Guidelines:
 - 말투: 학생들에게 친근한 '해요체'를 사용하세요. (예: "~했구나!", "~해보는 건 어때요?")
 - 구성: [공감적 경청] -> [온도에 따른 피드백] -> [작은 행동 미션(Action Item)] 순서로 대답하세요.
 - 행동 미션 예시: "3번 깊게 숨쉬기", "창밖 10초 바라보기", "좋아하는 노래 한 곡 듣기", "물 한 잔 마시기".
-- 위기 관리: 자해, 자살, 폭력 등 위험 징후가 보이면 즉시 "지금 바로 학교 상담실(Wee클래스)이나 청소년 상담전화 1388에 연락해봐. 넌 소중한 person이야."라고 안내하세요.
+- 위기 관리: 자해, 자살, 폭력 등 위험 징후가 보이면 즉시 "지금 바로 학교 상담실(Wee클래스)이나 청소년 상담전화 1388에 연락해봐. 넌 소중한 사람이야."라고 안내하세요.
 
 Output Format:
 - 반드시 한국어로만 답변하세요.
@@ -31,33 +31,21 @@ Output Format:
 `;
 
 export const getMindFeedback = async (temperature: number, reason: string): Promise<string> => {
-  // API 호출 직전에 인스턴스 생성 (최신 API 키 반영 보장)
+  // Ensure we use a fresh client for each call in case the API key changes via UI
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  try {
-    const result = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `나의 마음 온도는 ${temperature}도예요. 그 이유는: ${reason}. 이 상황에 대해 따뜻한 한국어 피드백을 문장이 끊기지 않게 마침표까지 끝까지 들려주세요.`,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.7,
-        // Removed maxOutputTokens to follow guidelines recommending avoidance unless strictly necessary
-      },
-    });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `나의 마음 온도는 ${temperature}도예요. 그 이유는: ${reason}. 이 상황에 대해 따뜻한 한국어 피드백을 문장이 끊기지 않게 마침표까지 끝까지 들려주세요.`,
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+      temperature: 0.7,
+    },
+  });
 
-    const text = result.text;
-    if (!text) {
-      throw new Error("Empty response from Gemini");
-    }
-    return text.trim();
-  } catch (error: any) {
-    console.error("Gemini API Error details:", error);
-    
-    // 키 관련 에러 발생 시 사용자에게 재시도 안내
-    if (error?.message?.includes("Requested entity was not found")) {
-      return "죄송해요, 서비스 연결에 문제가 생겼어요. 잠시 후 페이지를 새로고침한 뒤 다시 시도해 주시겠어요? 💙";
-    }
-    
-    return "미안해요, 지금은 이야기를 듣기가 조금 어렵네요. 하지만 전 언제나 당신의 편이에요! 잠시 후 다시 말 걸어줄래요? 💙";
+  const text = response.text;
+  if (!text) {
+    throw new Error("Empty response from AI");
   }
+  return text.trim();
 };
