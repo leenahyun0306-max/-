@@ -4,15 +4,14 @@ import TemperatureControl from './TemperatureControl.tsx';
 import { getMindFeedback } from '../services/geminiService.ts';
 import { HistoryItem } from '../types.ts';
 
-// Main participation component for recording mind temperature and receiving AI feedback
 const Participate: React.FC = () => {
   const [temperature, setTemperature] = useState(60);
   const [reason, setReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // Load history from localStorage on component mount
   useEffect(() => {
     const saved = localStorage.getItem('mindy_history');
     if (saved) {
@@ -30,13 +29,12 @@ const Participate: React.FC = () => {
 
     setIsLoading(true);
     setFeedback(null);
+    setErrorMessage(null);
 
     try {
-      // Get empathetic feedback from Gemini API
       const result = await getMindFeedback(temperature, reason);
       setFeedback(result);
 
-      // Create and save new history item
       const newItem: HistoryItem = {
         id: Date.now().toString(),
         temperature,
@@ -50,17 +48,21 @@ const Participate: React.FC = () => {
       localStorage.setItem('mindy_history', JSON.stringify(newHistory));
       setReason('');
     } catch (err: any) {
-      console.error("Submission failed", err);
+      console.error("Submission failed:", err);
       
-      // Handle specific billing/project errors by prompting for a fresh key selection
-      if (err?.message?.includes("Requested entity was not found")) {
-        setFeedback("죄송해요, 서비스 연결(API 키)에 문제가 생겼어요. 결제가 활성화된 프로젝트의 API 키를 다시 선택해 주세요.");
-        const aistudio = (window as any).aistudio;
+      const aistudio = (window as any).aistudio;
+      const isEntityNotFound = err?.message?.includes("Requested entity was not found") || err?.status === 404;
+      const isApiKeyMissing = err?.message === "API_KEY_NOT_CONFIGURED";
+
+      if (isEntityNotFound || isApiKeyMissing) {
+        setErrorMessage("서비스 연결을 위해 유효한 API 키 선택이 필요합니다.");
         if (aistudio && typeof aistudio.openSelectKey === 'function') {
           aistudio.openSelectKey();
         }
+      } else if (err?.message?.includes("quota") || err?.status === 429) {
+        setErrorMessage("잠시 사용량이 많아 응답이 지연되고 있어요. 1분만 뒤에 다시 시도해 주세요! 💙");
       } else {
-        setFeedback("죄송해요, 지금은 이야기를 듣는 중에 오류가 생겼어요. 잠시 후에 다시 시도해 주실래요? 💙");
+        setErrorMessage("마음을 읽어오는 중에 작은 문제가 발생했어요. 다시 한번 시도해 주시겠어요? 💙");
       }
     } finally {
       setIsLoading(false);
@@ -105,6 +107,13 @@ const Participate: React.FC = () => {
         </button>
       </form>
 
+      {errorMessage && (
+        <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl text-sm flex items-center gap-3 animate-in fade-in zoom-in-95">
+          <i className="fa-solid fa-circle-exclamation text-lg"></i>
+          <p className="font-medium">{errorMessage}</p>
+        </div>
+      )}
+
       {feedback && (
         <div className="glass-card p-8 rounded-3xl shadow-xl border-2 border-rose-200 bg-white animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex items-center gap-3 mb-4">
@@ -113,7 +122,7 @@ const Participate: React.FC = () => {
             </div>
             <h3 className="font-bold text-gray-800">마음 전달자</h3>
           </div>
-          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{feedback}</p>
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap font-medium">{feedback}</p>
         </div>
       )}
 

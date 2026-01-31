@@ -31,21 +31,30 @@ Output Format:
 `;
 
 export const getMindFeedback = async (temperature: number, reason: string): Promise<string> => {
-  // Ensure we use a fresh client for each call in case the API key changes via UI
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === "undefined") {
+    throw new Error("API_KEY_NOT_CONFIGURED");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
+  // API call structured as per the latest guidelines
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `나의 마음 온도는 ${temperature}도예요. 그 이유는: ${reason}. 이 상황에 대해 따뜻한 한국어 피드백을 문장이 끊기지 않게 마침표까지 끝까지 들려주세요.`,
+    contents: [{ 
+      parts: [{ 
+        text: `현재 나의 마음 온도는 ${temperature}도입니다. 그 이유는 다음과 같아요: "${reason}". 이 상황을 충분히 공감해주고, 위로와 함께 오늘 실천할 수 있는 작은 미션을 한국어로 다정하게 들려주세요.` 
+      }] 
+    }],
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
-      temperature: 0.7,
+      temperature: 0.8,
     },
   });
 
   const text = response.text;
   if (!text) {
-    throw new Error("Empty response from AI");
+    throw new Error("EMPTY_RESPONSE");
   }
   return text.trim();
 };
