@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import Navbar from './components/Navbar';
-import Home from './components/Home';
-import Participate from './components/Participate';
-import Wall from './components/Wall';
-import { Page } from './types';
+import Navbar from './components/Navbar.tsx';
+import Home from './components/Home.tsx';
+import Participate from './components/Participate.tsx';
+import Wall from './components/Wall.tsx';
+import { Page } from './types.ts';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);

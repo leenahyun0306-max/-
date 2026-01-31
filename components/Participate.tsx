@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import TemperatureControl from './TemperatureControl';
-import { getMindFeedback } from '../services/geminiService';
-import { HistoryItem } from '../types';
+import TemperatureControl from './TemperatureControl.tsx';
+import { getMindFeedback } from '../services/geminiService.ts';
+import { HistoryItem } from '../types.ts';
 
 const Participate: React.FC = () => {
   const [temperature, setTemperature] = useState(60);
