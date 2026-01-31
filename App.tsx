@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar.tsx';
 import Home from './components/Home.tsx';
 import Participate from './components/Participate.tsx';
@@ -8,8 +8,62 @@ import { Page } from './types.ts';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
+  const [isKeyReady, setIsKeyReady] = useState(true);
+
+  // 배포 환경에서 키 선택 여부 확인
+  useEffect(() => {
+    const checkApiKey = async () => {
+      // Accessing aistudio from window safely by casting to any to avoid conflict with predefined types
+      const aistudio = (window as any).aistudio;
+      if (aistudio) {
+        const hasKey = await aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          setIsKeyReady(false);
+        }
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  const handleOpenKeyPicker = async () => {
+    // Accessing aistudio from window safely by casting to any to avoid conflict with predefined types
+    const aistudio = (window as any).aistudio;
+    if (aistudio) {
+      await aistudio.openSelectKey();
+      setIsKeyReady(true); // 선택 후 즉시 진행 허용 (레이스 컨디션 방지)
+    }
+  };
 
   const renderPage = () => {
+    if (!isKeyReady) {
+      return (
+        <div className="pt-32 px-6 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+          <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center animate-pulse">
+            <i className="fa-solid fa-key text-2xl"></i>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800">서비스 준비가 필요해요</h2>
+          <p className="text-gray-600 max-w-md">
+            이 캠페인은 학생들의 마음을 읽기 위해 안전한 연결이 필요합니다.<br/>
+            아래 버튼을 눌러 API 키 설정을 완료해 주세요.
+          </p>
+          <button 
+            onClick={handleOpenKeyPicker}
+            className="bg-rose-500 hover:bg-rose-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg transition-all"
+          >
+            설정 시작하기
+          </button>
+          <a 
+            href="https://ai.google.dev/gemini-api/docs/billing" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 underline"
+          >
+            결제 및 키 정보 확인하기
+          </a>
+        </div>
+      );
+    }
+
     switch (currentPage) {
       case Page.Home:
         return <Home onStart={() => setCurrentPage(Page.Participate)} />;

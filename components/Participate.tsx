@@ -13,32 +13,44 @@ const Participate: React.FC = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('mindy_history');
-    if (saved) setHistory(JSON.parse(saved));
+    if (saved) {
+      try {
+        setHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse history", e);
+      }
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) return;
+    if (!reason.trim() || isLoading) return;
 
     setIsLoading(true);
     setFeedback(null);
 
-    const result = await getMindFeedback(temperature, reason);
-    setFeedback(result);
-    setIsLoading(false);
+    try {
+      const result = await getMindFeedback(temperature, reason);
+      setFeedback(result);
 
-    const newItem: HistoryItem = {
-      id: Date.now().toString(),
-      temperature,
-      reason,
-      feedback: result,
-      timestamp: Date.now()
-    };
+      const newItem: HistoryItem = {
+        id: Date.now().toString(),
+        temperature,
+        reason,
+        feedback: result,
+        timestamp: Date.now()
+      };
 
-    const newHistory = [newItem, ...history].slice(0, 10);
-    setHistory(newHistory);
-    localStorage.setItem('mindy_history', JSON.stringify(newHistory));
-    setReason('');
+      const newHistory = [newItem, ...history].slice(0, 10);
+      setHistory(newHistory);
+      localStorage.setItem('mindy_history', JSON.stringify(newHistory));
+      setReason('');
+    } catch (err) {
+      console.error("Submission failed", err);
+      setFeedback("죄송해요, 지금은 이야기를 듣는 중에 오류가 생겼어요. 다시 시도해 주실래요?");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -59,10 +71,12 @@ const Participate: React.FC = () => {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
 
         <button 
+          type="submit"
           disabled={isLoading || !reason.trim()}
           className="w-full bg-gray-800 hover:bg-black text-white py-4 rounded-2xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
